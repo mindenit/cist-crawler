@@ -1,17 +1,24 @@
 {
-  "name": "test",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
-  "dependencies": {
-    "iconv-lite": "^0.6.3",
-    "node-fetch": "^3.3.2"
-  }
+	"name": "cist-crawler",
+	"private": true,
+	"lint-staged": {
+		"**/*": "prettier --write --ignore-unknown"
+	},
+	"engines": {
+		"node": ">= 22.x"
+	},
+	"scripts": {
+		"format": "prettier --write .",
+		"kit:build": "pnpm --filter @mindenit/cist-crawler build",
+		"kit:playground": "pnpm --filter @mindenit/cist-crawler playground",
+		"prepare": "husky"
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^19.8.1",
+		"@commitlint/config-conventional": "^19.8.1",
+		"husky": "^9.1.7",
+		"lint-staged": "^15.5.2",
+		"prettier": "^3.5.3"
+	},
+	"packageManager": "pnpm@9.12.3"
 }
