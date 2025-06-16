@@ -1,9 +1,59 @@
-// I hate my life...
+// I hate my life... at least now I can use this code to measure performance of the JSON fixing process
 import fetch from 'node-fetch';
 import iconv from 'iconv-lite';
 import fs from 'fs/promises';
 
 const SERVERS = ["cist.nure.ua", "cist2.nure.ua"];
+
+class PerformanceMonitor {
+    constructor() {
+        this.timings = new Map();
+        this.totalTime = 0;
+    }
+
+    start(operation) {
+        this.timings.set(operation, { start: performance.now() });
+    }
+
+    end(operation) {
+        const timing = this.timings.get(operation);
+        if (timing) {
+            timing.end = performance.now();
+            timing.duration = timing.end - timing.start;
+            this.totalTime += timing.duration;
+            console.log(`-> ${operation}: ${timing.duration.toFixed(2)} ms`);
+            return timing.duration;
+        }
+        return 0;
+    }
+
+    getDuration(operation) {
+        const timing = this.timings.get(operation);
+        return timing ? timing.duration : 0;
+    }
+
+    printSummary() {
+        console.log('\nPERFORMANCE SUMMARY:');
+        console.log('─'.repeat(50));
+        
+        for (const [operation, timing] of this.timings) {
+            if (timing.duration !== undefined) {
+                console.log(`${operation.padEnd(30)} ${timing.duration.toFixed(2).padStart(10)} ms`);
+            }
+        }
+        
+        console.log('─'.repeat(50));
+        console.log(`${'TOTAL TIME'.padEnd(30)} ${this.totalTime.toFixed(2).padStart(10)} ms`);
+        console.log(`${'TOTAL TIME'.padEnd(30)} ${(this.totalTime / 1000).toFixed(2).padStart(10)} s`);
+    }
+
+    reset() {
+        this.timings.clear();
+        this.totalTime = 0;
+    }
+}
+
+const perfMonitor = new PerformanceMonitor();
 
 class UniversalJSONFixer {
     constructor() {
@@ -207,46 +257,73 @@ class UniversalJSONFixer {
 const jsonFixer = new UniversalJSONFixer();
 
 async function getAvailableServer() {
+    perfMonitor.start('Server availability check');
+    
     for (const server of SERVERS) {
         try {
             const healthCheckUrl = `https://${server}/ias/app/tt/P_API_AUDITORIES_JSON`;
+            const serverCheckStart = performance.now();
             const response = await fetch(healthCheckUrl, { method: 'GET', timeout: 5000 });
+            const serverCheckTime = performance.now() - serverCheckStart;
+            
             if (response.ok) {
-                console.log(`Using server: ${server}`);
+                console.log(`Using server: ${server} (check took ${serverCheckTime.toFixed(2)} ms)`);
+                perfMonitor.end('Server availability check');
                 return server;
             }
         } catch (error) {
             console.warn(`Server ${server} is unavailable. Error: ${error.message}`);
         }
     }
+    
+    perfMonitor.end('Server availability check');
     return null;
 }
 
 async function fetchAndDecode(endpoint) {
+    const operationName = `Fetch data from ${endpoint}`;
+    perfMonitor.start(operationName);
+    
     const server = await getAvailableServer();
     if (!server) {
+        perfMonitor.end(operationName);
         throw new Error("No available servers.");
     }
     const url = `https://${server}${endpoint}`;
 
     try {
+        perfMonitor.start('Network request');
         const response = await fetch(url);
+        perfMonitor.end('Network request');
+        
         if (!response.ok) {
+            perfMonitor.end(operationName);
             throw new Error(`Network error: ${response.statusText}`);
         }
         
+        perfMonitor.start('Data decoding');
         const buffer = await response.arrayBuffer();
         const decodedBody = iconv.decode(Buffer.from(buffer), 'windows-1251');
+        perfMonitor.end('Data decoding');
         
-        return decodedBody.startsWith('\uFEFF') ? decodedBody.substring(1) : decodedBody;
+        const result = decodedBody.startsWith('\uFEFF') ? decodedBody.substring(1) : decodedBody;
+        perfMonitor.end(operationName);
+        
+        return result;
     } catch (error) {
+        perfMonitor.end(operationName);
         console.error(`Failed to fetch data from ${url}:`, error);
         return "";
     }
 }
 
 function tryFixComplex(invalidJson) {
-    if (!invalidJson) return "{}";
+    perfMonitor.start('Complex JSON fix algorithm');
+    
+    if (!invalidJson) {
+        perfMonitor.end('Complex JSON fix algorithm');
+        return "{}";
+    }
 
     const fixJsonString = (str) => str.replace(/\\"/g, '"').replace(/"/g, '\\"');
     const fixNonStringJson = (str) => {
@@ -262,7 +339,9 @@ function tryFixComplex(invalidJson) {
 
     let firstValueIndex = invalidJson.indexOf(stringStart);
     if (firstValueIndex === -1) {
-        return fixNonStringJson(invalidJson);
+        const result = fixNonStringJson(invalidJson);
+        perfMonitor.end('Complex JSON fix algorithm');
+        return result;
     }
 
     resultParts.push(fixNonStringJson(invalidJson.substring(0, firstValueIndex)));
@@ -303,15 +382,23 @@ function tryFixComplex(invalidJson) {
         currentIndex = nextEndIndex;
     }
 
-    return resultParts.join('');
+    const result = resultParts.join('');
+    perfMonitor.end('Complex JSON fix algorithm');
+    return result;
 }
 
 function tryFixSimple(invalidJson) {
-    if (!invalidJson) return "{}";
+    perfMonitor.start('Simple JSON fix algorithm');
+    
+    if (!invalidJson) {
+        perfMonitor.end('Simple JSON fix algorithm');
+        return "{}";
+    }
 
     const fixResult = jsonFixer.fix(invalidJson);
     if (fixResult.success) {
-        console.log(`Universal fixer applied: ${fixResult.appliedFixes.join(', ')}`);
+        console.log(`🔧 Universal fixer applied: ${fixResult.appliedFixes.join(', ')}`);
+        perfMonitor.end('Simple JSON fix algorithm');
         return fixResult.fixed;
     }
 
@@ -321,23 +408,30 @@ function tryFixSimple(invalidJson) {
 
     correctedJson = correctedJson.replace(/:(\s*?)([,}\]])/g, ":null$2");
 
+    perfMonitor.end('Simple JSON fix algorithm');
     return correctedJson;
 }
 
 async function saveToFile(requestType, data) {
+    perfMonitor.start('File saving');
+    
     const timestamp = Math.floor(Date.now() / 1000);
     const filename = `${requestType}_${timestamp}.json`;
     const content = JSON.stringify(data, null, 2);
 
     try {
         await fs.writeFile(filename, content, 'utf8');
-        console.log(`\nData successfully saved to file: ${filename}`);
+        console.log(`Data successfully saved to file: ${filename}`);
     } catch (error) {
-        console.error(`\nError saving file:`, error);
+        console.error(`Error saving file:`, error);
     }
+    
+    perfMonitor.end('File saving');
 }
 
 async function saveErrorFile(requestType, data) {
+    perfMonitor.start('Error file saving');
+    
     const timestamp = Math.floor(Date.now() / 1000);
     const filename = `error_${requestType}_${timestamp}.json`;
     
@@ -345,56 +439,82 @@ async function saveErrorFile(requestType, data) {
         await fs.writeFile(filename, data, 'utf8');
         console.log(`Debug file saved: ${filename}`);
     } catch (writeError) {
-        console.error(`\nFailed to write debug file:`, writeError);
+        console.error(`Failed to write debug file:`, writeError);
     }
+    
+    perfMonitor.end('Error file saving');
 }
 
 async function parseWithFallback(rawJson, requestType) {
+    perfMonitor.start('JSON parsing with fallback');
+    
     try {
         const fixedJson = tryFixComplex(rawJson);
-        return JSON.parse(fixedJson);
+        const result = JSON.parse(fixedJson);
+        perfMonitor.end('JSON parsing with fallback');
+        return result;
     } catch (primaryError) {
-        console.warn(`\nPrimary fix algorithm failed for '${requestType}'. Trying fallback...`);
+        console.warn(`Primary fix algorithm failed for '${requestType}'. Trying fallback...`);
         
         try {
             const fixedJsonBackup = tryFixSimple(rawJson);
             const result = JSON.parse(fixedJsonBackup);
             console.log(`Fallback algorithm successfully fixed JSON for '${requestType}'.`);
+            perfMonitor.end('JSON parsing with fallback');
             return result;
         } catch (backupError) {
-            console.error(`\nFallback algorithm also failed for '${requestType}'.`);
+            console.error(`Fallback algorithm also failed for '${requestType}'.`);
             await saveErrorFile(requestType, rawJson); 
+            perfMonitor.end('JSON parsing with fallback');
             throw primaryError; 
         }
     }
 }
 
 async function getAuditories() {
+    perfMonitor.start('Get auditories (total)');
     const rawJson = await fetchAndDecode("/ias/app/tt/P_API_AUDITORIES_JSON");
-    return parseWithFallback(rawJson, 'auditories');
+    const result = await parseWithFallback(rawJson, 'auditories');
+    perfMonitor.end('Get auditories (total)');
+    return result;
 }
 
 async function getGroups() {
+    perfMonitor.start('Get groups (total)');
     const rawJson = await fetchAndDecode("/ias/app/tt/P_API_GROUP_JSON");
-    return parseWithFallback(rawJson, 'groups');
+    const result = await parseWithFallback(rawJson, 'groups');
+    perfMonitor.end('Get groups (total)');
+    return result;
 }
 
 async function getTeachers() {
+    perfMonitor.start('Get teachers (total)');
     let rawJson = await fetchAndDecode("/ias/app/tt/P_API_PODR_JSON");
     if (rawJson) {
+        perfMonitor.start('Teacher data preprocessing');
         rawJson = rawJson.slice(0, -2) + "]}}";
+        perfMonitor.end('Teacher data preprocessing');
     }
-    return parseWithFallback(rawJson, 'teachers');
+    const result = await parseWithFallback(rawJson, 'teachers');
+    perfMonitor.end('Get teachers (total)');
+    return result;
 }
 
 async function getEvents(type, id) {
+    perfMonitor.start('Get events (total)');
+    
+    perfMonitor.start('Calculate time range');
     const now = new Date();
     const time_from = Math.floor(new Date(now.getFullYear() - 2, 6, 1).getTime() / 1000);
     const time_to = Math.floor(new Date(now.getFullYear() + 2, 8, 1).getTime() / 1000);
+    perfMonitor.end('Calculate time range');
     
     const endpoint = `/ias/app/tt/P_API_EVEN_JSON?type_id=${type}&timetable_id=${id}&time_from=${time_from}&time_to=${time_to}&idClient=KNURESked`;
     const rawJson = await fetchAndDecode(endpoint);
-    return parseWithFallback(rawJson, `schedule_${type}_${id}`);
+    const result = await parseWithFallback(rawJson, `schedule_${type}_${id}`);
+    
+    perfMonitor.end('Get events (total)');
+    return result;
 }
 
 function printUsage() {
@@ -423,22 +543,25 @@ async function main() {
         return;
     }
 
+    console.log(`Starting ${command} operation...\n`);
+    perfMonitor.start('Total operation time');
+
     try {
         switch (command) {
             case 'groups':
-                console.log("\n--- Getting list of groups ---");
+                console.log("Getting list of groups...");
                 const groups = await getGroups();
                 await saveToFile(command, groups);
                 break;
 
             case 'teachers':
-                console.log("\n--- Getting list of teachers ---");
+                console.log("Getting list of teachers...");
                 const teachers = await getTeachers();
                 await saveToFile(command, teachers);
                 break;
 
             case 'auditories':
-                console.log("\n--- Getting list of auditories ---");
+                console.log("Getting list of auditories...");
                 const auditories = await getAuditories();
                 await saveToFile(command, auditories);
                 break;
@@ -448,23 +571,26 @@ async function main() {
                 const id = parseInt(process.argv[4], 10);
 
                 if (isNaN(type) || isNaN(id)) {
-                    console.error("\nError: 'schedule' command requires 'type' and 'id' parameters.");
+                    console.error("Error: 'schedule' command requires 'type' and 'id' parameters.");
                     printUsage();
                     return;
                 }
                 
-                console.log(`\n--- Getting schedule for type=${type}, id=${id} ---`);
+                console.log(`Getting schedule for type=${type}, id=${id}...`);
                 const events = await getEvents(type, id);
                 const filename = `${command}_${type}_${id}`;
                 await saveToFile(filename, events);
                 break;
 
             default:
-                console.error(`\nUnknown command: "${command}"`);
+                console.error(`Unknown command: "${command}"`);
                 printUsage();
         }
     } catch (error) {
-        console.error("\nCritical error occurred:", error.message);
+        console.error("Critical error occurred:", error.message);
+    } finally {
+        perfMonitor.end('Total operation time');
+        // perfMonitor.printSummary();
     }
 }
 
