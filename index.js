@@ -1,8 +1,210 @@
+// I hate my life...
 import fetch from 'node-fetch';
 import iconv from 'iconv-lite';
 import fs from 'fs/promises';
 
 const SERVERS = ["cist.nure.ua", "cist2.nure.ua"];
+
+class UniversalJSONFixer {
+    constructor() {
+        this.fixes = [
+            { name: 'BOM and invisible characters', fn: this.removeBOM },
+            { name: 'Extra spaces', fn: this.cleanWhitespace },
+            
+            { name: 'Extra closing braces', fn: this.fixExtraClosingBraces },
+            { name: 'Multiple braces', fn: this.fixMultipleBraces },
+            { name: 'Incorrect sequences', fn: this.fixBraceSequences },
+            { name: 'Balance braces', fn: this.balanceBraces },
+            
+            { name: 'Trailing commas', fn: this.fixTrailingCommas },
+            { name: 'Missing commas', fn: this.fixMissingCommas },
+            { name: 'Key quotes', fn: this.fixUnquotedKeys },
+            { name: 'Single quotes', fn: this.fixSingleQuotes },
+            { name: 'Unclosed strings', fn: this.fixUnclosedStrings },
+            
+            { name: 'Empty values', fn: this.fixEmptyValues },
+            { name: 'Incorrect values', fn: this.fixValues },
+            { name: 'Comments', fn: this.removeComments },
+            
+            { name: 'Final cleanup', fn: this.finalCleanup }
+        ];
+    }
+
+    removeBOM(str) {
+        return str.replace(/^\uFEFF/, '').replace(/[\u200B-\u200D\uFEFF]/g, '');
+    }
+
+    cleanWhitespace(str) {
+        return str.replace(/[\t\r]/g, ' ').replace(/\n+/g, '\n');
+    }
+
+    fixExtraClosingBraces(str) {
+        str = str.replace(/(\[\s*\])\s*[\]\}]+/g, '$1');
+        str = str.replace(/(\{\s*\})\s*[\]\}]+/g, '$1');
+        
+        str = str.replace(/\[\s*\]\s*\]\s*\]\s*(?=[,\]\}])/g, '[]');
+        str = str.replace(/\[\s*\]\s*\}\s*\]\s*(?=[,\]\}])/g, '[]');
+        
+        return str;
+    }
+
+    fixMultipleBraces(str) {
+        str = str.replace(/\]{2,}/g, ']');
+        str = str.replace(/\}{2,}/g, '}');
+        str = str.replace(/[\]\}]{3,}/g, match => {
+            const braceCount = (match.match(/\}/g) || []).length;
+            const bracketCount = (match.match(/\]/g) || []).length;
+            return (braceCount > 0 ? '}' : '') + (bracketCount > 0 ? ']' : '');
+        });
+        
+        return str;
+    }
+
+    fixBraceSequences(str) {
+        str = str.replace(/\}\s*\]/g, '}');
+        str = str.replace(/\]\s*\}/g, ']');
+        str = str.replace(/\[\s*\}/g, '[');
+        str = str.replace(/\{\s*\]/g, '{');
+        
+        return str;
+    }
+
+    balanceBraces(str) {
+        const openBraces = (str.match(/\{/g) || []).length;
+        const closeBraces = (str.match(/\}/g) || []).length;
+        const openBrackets = (str.match(/\[/g) || []).length;
+        const closeBrackets = (str.match(/\]/g) || []).length;
+
+        let result = str;
+
+        if (closeBraces > openBraces) {
+            const extra = closeBraces - openBraces;
+            for (let i = 0; i < extra; i++) {
+                result = result.replace(/\}(?![^{]*\{)/, '');
+            }
+        }
+
+        if (closeBrackets > openBrackets) {
+            const extra = closeBrackets - openBrackets;
+            for (let i = 0; i < extra; i++) {
+                result = result.replace(/\](?![^\[]*\[)/, '');
+            }
+        }
+
+        if (openBraces > closeBraces) {
+            result += '}'.repeat(openBraces - closeBraces);
+        }
+
+        if (openBrackets > closeBrackets) {
+            result += ']'.repeat(openBrackets - closeBrackets);
+        }
+
+        return result;
+    }
+
+    fixTrailingCommas(str) {
+        return str.replace(/,(\s*[\]\}])/g, '$1');
+    }
+
+    fixMissingCommas(str) {
+        str = str.replace(/\}(\s*)\{/g, '},$1{');
+        str = str.replace(/\](\s*)\[/g, '],$1[');
+        str = str.replace(/"(\s*)"(?!\s*:)/g, '",$1"');
+        str = str.replace(/(\d)(\s*)"/g, '$1,$2"');
+        str = str.replace(/"(\s*)(\d)/g, '",$1$2');
+        
+        return str;
+    }
+
+    fixUnquotedKeys(str) {
+        return str.replace(/([{\s,]\s*)([a-zA-Z_$][a-zA-Z0-9_$-]*)\s*:/g, '$1"$2":');
+    }
+
+    fixSingleQuotes(str) {
+        return str.replace(/'/g, '"');
+    }
+
+    fixUnclosedStrings(str) {
+        const lines = str.split('\n');
+        return lines.map(line => {
+            let quoteCount = 0;
+            let escaped = false;
+
+            for (let i = 0; i < line.length; i++) {
+                if (line[i] === '"' && !escaped) {
+                    quoteCount++;
+                }
+                escaped = line[i] === '\\' && !escaped;
+            }
+
+            if (quoteCount % 2 === 1) {
+                return line + '"';
+            }
+            return line;
+        }).join('\n');
+    }
+
+    fixEmptyValues(str) {
+        return str.replace(/:(\s*?)([,}\]])/g, ':null$2');
+    }
+
+    fixValues(str) {
+        str = str.replace(/:\s*undefined\b/g, ': null');
+        str = str.replace(/:\s*True\b/g, ': true');
+        str = str.replace(/:\s*False\b/g, ': false');
+        str = str.replace(/:\s*None\b/g, ': null');
+        
+        return str;
+    }
+
+    removeComments(str) {
+        str = str.replace(/\/\/.*$/gm, '');
+        str = str.replace(/\/\*[\s\S]*?\*\//g, '');
+        str = str.replace(/#.*$/gm, '');
+        
+        return str;
+    }
+
+    finalCleanup(str) {
+        str = str.replace(/\n\s*\n/g, '\n');
+        str = str.replace(/,\s*,/g, ',');
+        str = str.replace(/:\s*,/g, ': null,');
+        str = str.replace(/[\r\n]/g, '');
+        
+        return str.trim();
+    }
+
+    fix(content) {
+        if (!content) return "{}";
+
+        let working = content;
+        const appliedFixes = [];
+
+        for (const fix of this.fixes) {
+            try {
+                const before = working;
+                working = fix.fn.call(this, working);
+
+                if (working !== before) {
+                    appliedFixes.push(fix.name);
+                }
+
+                try {
+                    JSON.parse(working);
+                    return { success: true, fixed: working, appliedFixes };
+                } catch (e) {
+                    continue;
+                }
+            } catch (error) {
+                continue;
+            }
+        }
+
+        return { success: false, fixed: working, appliedFixes };
+    }
+}
+
+const jsonFixer = new UniversalJSONFixer();
 
 async function getAvailableServer() {
     for (const server of SERVERS) {
@@ -104,9 +306,14 @@ function tryFixComplex(invalidJson) {
     return resultParts.join('');
 }
 
-
 function tryFixSimple(invalidJson) {
     if (!invalidJson) return "{}";
+
+    const fixResult = jsonFixer.fix(invalidJson);
+    if (fixResult.success) {
+        console.log(`Universal fixer applied: ${fixResult.appliedFixes.join(', ')}`);
+        return fixResult.fixed;
+    }
 
     let correctedJson = invalidJson
         .replace(/[\r\n]/g, '')
@@ -116,7 +323,6 @@ function tryFixSimple(invalidJson) {
 
     return correctedJson;
 }
-
 
 async function saveToFile(requestType, data) {
     const timestamp = Math.floor(Date.now() / 1000);
@@ -143,7 +349,6 @@ async function saveErrorFile(requestType, data) {
     }
 }
 
-
 async function parseWithFallback(rawJson, requestType) {
     try {
         const fixedJson = tryFixComplex(rawJson);
@@ -163,7 +368,6 @@ async function parseWithFallback(rawJson, requestType) {
         }
     }
 }
-
 
 async function getAuditories() {
     const rawJson = await fetchAndDecode("/ias/app/tt/P_API_AUDITORIES_JSON");
@@ -192,7 +396,6 @@ async function getEvents(type, id) {
     const rawJson = await fetchAndDecode(endpoint);
     return parseWithFallback(rawJson, `schedule_${type}_${id}`);
 }
-
 
 function printUsage() {
     console.log(`
