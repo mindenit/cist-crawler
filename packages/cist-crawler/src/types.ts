@@ -1,4 +1,9 @@
-export interface Types {
+export interface CistCrawlerConfig {
+	servers?: string[]
+	timeout?: number
+}
+
+export interface Response {
 	university?: University
 	'time-zone'?: string
 	events?: Event[]
@@ -100,4 +105,11 @@ export interface Direction {
 	full_name: string
 	specialities?: Direction[]
 	groups?: Group[]
+}
+
+export interface ScheduleOptions {
+	type: 1 | 2 // 1 for group, 2 for teacher
+	id: number
+	timeFrom?: Date
+	timeTo?: Date
 }
