@@ -1,9 +1,8 @@
-import { defineConfig } from 'tsup'
+import { defineConfig } from 'tsdown'
 
 export default defineConfig({
 	entry: ['src/index.ts'],
 	format: ['esm'],
-	splitting: true,
 	clean: true,
 	dts: true,
 	bundle: true,

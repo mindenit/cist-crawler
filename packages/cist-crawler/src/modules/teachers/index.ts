@@ -1,9 +1,8 @@
-import type { Response } from '@/types.js'
+import type { IBaseModule, Response } from '@/types.js'
 import { Fetcher } from '@/utils/fetcher.js'
 import { JSONParser } from '@/utils/parser.js'
-import type { ITeachersModule } from './types.js'
 
-export class TeachersModule implements ITeachersModule {
+export class TeachersModule implements IBaseModule {
 	private fetcher: Fetcher
 	private parser: JSONParser
 

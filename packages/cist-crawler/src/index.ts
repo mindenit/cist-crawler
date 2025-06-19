@@ -1,12 +1,8 @@
 import { GroupsModule } from '@/modules/groups/index.js'
-import type { IGroupsModule } from '@/modules/groups/types.js'
 import { TeachersModule } from '@/modules/teachers/index.js'
-import type { ITeachersModule } from '@/modules/teachers/types.js'
 import { AuditoriesModule } from '@/modules/auditories/index.js'
-import type { IAuditoriesModule } from '@/modules/auditories/types.js'
 import { ScheduleModule } from '@/modules/schedule/index.js'
-import type { IScheduleModule } from '@/modules/schedule/types.js'
-import type { CistCrawlerConfig } from '@/types.js'
+import type { CistCrawlerConfig, IBaseModule } from '@/types.js'
 
 export const DEFAULT_CONFIG = {
 	servers: ['cist.nure.ua', 'cist2.nure.ua'],
@@ -14,10 +10,10 @@ export const DEFAULT_CONFIG = {
 } as const
 
 export class CistCrawler {
-	private groups: IGroupsModule
-	private teachers: ITeachersModule
-	private auditories: IAuditoriesModule
-	private schedule: IScheduleModule
+	private groups: IBaseModule
+	private teachers: IBaseModule
+	private auditories: IBaseModule
+	private schedule: IBaseModule
 
 	constructor(config?: CistCrawlerConfig) {
 		const servers = config?.servers ?? DEFAULT_CONFIG.servers

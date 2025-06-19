@@ -48,12 +48,12 @@
 		"dist/**"
 	],
 	"scripts": {
-		"build": "tsup",
+		"build": "tsdown",
 		"playground": "tsx playground.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"tsup": "^8.5.0",
+		"tsdown": "^0.12.8",
 		"tsx": "^4.20.3",
 		"typescript": "^5.8.3"
 	},

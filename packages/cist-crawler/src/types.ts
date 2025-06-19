@@ -113,3 +113,7 @@ export interface ScheduleOptions {
 	timeFrom?: Date
 	timeTo?: Date
 }
+
+export interface IBaseModule {
+	findMany: (options?: any) => Promise<Response>
+}

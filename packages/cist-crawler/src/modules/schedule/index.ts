@@ -1,9 +1,8 @@
-import type { Response, ScheduleOptions } from '@/types.js'
+import type { IBaseModule, Response, ScheduleOptions } from '@/types.js'
 import { Fetcher } from '@/utils/fetcher.js'
 import { JSONParser } from '@/utils/parser.js'
-import type { IScheduleModule } from './types.js'
 
-export class ScheduleModule implements IScheduleModule {
+export class ScheduleModule implements IBaseModule {
 	private fetcher: Fetcher
 	private parser: JSONParser
 

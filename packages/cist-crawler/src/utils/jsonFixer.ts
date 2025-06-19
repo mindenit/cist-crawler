@@ -1,5 +1,5 @@
 export class UniversalJSONFixer {
-	private fixes = [
+	private static readonly FIXES = [
 		{ name: 'BOM and invisible characters', fn: this.removeBOM },
 		{ name: 'Extra spaces', fn: this.cleanWhitespace },
 		{ name: 'Extra closing braces', fn: this.fixExtraClosingBraces },
@@ -17,15 +17,15 @@ export class UniversalJSONFixer {
 		{ name: 'Final cleanup', fn: this.finalCleanup },
 	]
 
-	private removeBOM(str: string): string {
+	private static removeBOM(str: string): string {
 		return str.replace(/^\uFEFF/, '').replace(/[\u200B-\u200D\uFEFF]/g, '')
 	}
 
-	private cleanWhitespace(str: string): string {
+	private static cleanWhitespace(str: string): string {
 		return str.replace(/[\t\r]/g, ' ').replace(/\n+/g, '\n')
 	}
 
-	private fixExtraClosingBraces(str: string): string {
+	private static fixExtraClosingBraces(str: string): string {
 		str = str.replace(/(\[\s*\])\s*[\]\}]+/g, '$1')
 		str = str.replace(/(\{\s*\})\s*[\]\}]+/g, '$1')
 		str = str.replace(/\[\s*\]\s*\]\s*\]\s*(?=[,\]\}])/g, '[]')
@@ -33,7 +33,7 @@ export class UniversalJSONFixer {
 		return str
 	}
 
-	private fixMultipleBraces(str: string): string {
+	private static fixMultipleBraces(str: string): string {
 		str = str.replace(/\]{2,}/g, ']')
 		str = str.replace(/\}{2,}/g, '}')
 		str = str.replace(/[\]\}]{3,}/g, (match) => {
@@ -44,7 +44,7 @@ export class UniversalJSONFixer {
 		return str
 	}
 
-	private fixBraceSequences(str: string): string {
+	private static fixBraceSequences(str: string): string {
 		str = str.replace(/\}\s*\]/g, '}')
 		str = str.replace(/\]\s*\}/g, ']')
 		str = str.replace(/\[\s*\}/g, '[')
@@ -52,7 +52,7 @@ export class UniversalJSONFixer {
 		return str
 	}
 
-	private balanceBraces(str: string): string {
+	private static balanceBraces(str: string): string {
 		const openBraces = (str.match(/\{/g) || []).length
 		const closeBraces = (str.match(/\}/g) || []).length
 		const openBrackets = (str.match(/\[/g) || []).length
@@ -85,11 +85,11 @@ export class UniversalJSONFixer {
 		return result
 	}
 
-	private fixTrailingCommas(str: string): string {
+	private static fixTrailingCommas(str: string): string {
 		return str.replace(/,(\s*[\]\}])/g, '$1')
 	}
 
-	private fixMissingCommas(str: string): string {
+	private static fixMissingCommas(str: string): string {
 		str = str.replace(/\}(\s*)\{/g, '},$1{')
 		str = str.replace(/\](\s*)\[/g, '],$1[')
 		str = str.replace(/"(\s*)"(?!\s*:)/g, '",$1"')
@@ -98,15 +98,15 @@ export class UniversalJSONFixer {
 		return str
 	}
 
-	private fixUnquotedKeys(str: string): string {
+	private static fixUnquotedKeys(str: string): string {
 		return str.replace(/([{\s,]\s*)([a-zA-Z_$][a-zA-Z0-9_$-]*)\s*:/g, '$1"$2":')
 	}
 
-	private fixSingleQuotes(str: string): string {
+	private static fixSingleQuotes(str: string): string {
 		return str.replace(/'/g, '"')
 	}
 
-	private fixUnclosedStrings(str: string): string {
+	private static fixUnclosedStrings(str: string): string {
 		const lines = str.split('\n')
 		return lines
 			.map((line) => {
@@ -128,11 +128,11 @@ export class UniversalJSONFixer {
 			.join('\n')
 	}
 
-	private fixEmptyValues(str: string): string {
+	private static fixEmptyValues(str: string): string {
 		return str.replace(/:(\s*?)([,}\]])/g, ':null$2')
 	}
 
-	private fixValues(str: string): string {
+	private static fixValues(str: string): string {
 		str = str.replace(/:\s*undefined\b/g, ': null')
 		str = str.replace(/:\s*True\b/g, ': true')
 		str = str.replace(/:\s*False\b/g, ': false')
@@ -140,14 +140,14 @@ export class UniversalJSONFixer {
 		return str
 	}
 
-	private removeComments(str: string): string {
+	private static removeComments(str: string): string {
 		str = str.replace(/\/\/.*$/gm, '')
 		str = str.replace(/\/\*[\s\S]*?\*\//g, '')
 		str = str.replace(/#.*$/gm, '')
 		return str
 	}
 
-	private finalCleanup(str: string): string {
+	private static finalCleanup(str: string): string {
 		str = str.replace(/\n\s*\n/g, '\n')
 		str = str.replace(/,\s*,/g, ',')
 		str = str.replace(/:\s*,/g, ': null,')
@@ -155,7 +155,7 @@ export class UniversalJSONFixer {
 		return str.trim()
 	}
 
-	fix(content: string): {
+	static fix(content: string): {
 		success: boolean
 		fixed: string
 		appliedFixes: string[]
@@ -165,7 +165,7 @@ export class UniversalJSONFixer {
 		let working = content
 		const appliedFixes: string[] = []
 
-		for (const fix of this.fixes) {
+		for (const fix of UniversalJSONFixer.FIXES) {
 			try {
 				const before = working
 				working = fix.fn.call(this, working)

@@ -2,8 +2,6 @@ import { UniversalJSONFixer } from '@/utils/jsonFixer.js'
 import { CistCrawlerError } from '@/error.js'
 
 export class JSONParser {
-	private jsonFixer = new UniversalJSONFixer()
-
 	private tryFixComplex(invalidJson: string): string {
 		if (!invalidJson) return '{}'
 
@@ -81,7 +79,7 @@ export class JSONParser {
 	private tryFixSimple(invalidJson: string): string {
 		if (!invalidJson) return '{}'
 
-		const fixResult = this.jsonFixer.fix(invalidJson)
+		const fixResult = UniversalJSONFixer.fix(invalidJson)
 		if (fixResult.success) {
 			return fixResult.fixed
 		}
