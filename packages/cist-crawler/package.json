@@ -1,0 +1,61 @@
+{
+	"name": "@mindenit/cist-crawler",
+	"version": "0.1.0",
+	"description": "CIST crawler for Mindenit Schedule",
+	"type": "module",
+	"keywords": [
+		"mindenit",
+		"cist",
+		"crawler",
+		"schedule",
+		"university"
+	],
+	"author": "Mindenit",
+	"license": "GPL-3.0-only",
+	"homepage": "https://github.com/mindenit/cist-crawler",
+	"maintainers": [
+		{
+			"name": "Kyrylo Savieliev",
+			"url": "https://github.com/OneLiL05"
+		},
+		{
+			"name": "Roman Trashutin",
+			"url": "https://github.com/perkinson1251"
+		}
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/mindenit/cist-crawler"
+	},
+	"bugs": {
+		"url": "https://github.com/mindenit/cist-crawler"
+	},
+	"engines": {
+		"node": ">= 22.x"
+	},
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
+		}
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist/**"
+	],
+	"scripts": {
+		"build": "tsdown",
+		"playground": "tsx playground.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"tsdown": "^0.12.8",
+		"tsx": "^4.20.3",
+		"typescript": "^5.8.3"
+	},
+	"private": false
+}

@@ -9,8 +9,8 @@
 	},
 	"scripts": {
 		"format": "prettier --write .",
-		"kit:build": "pnpm --filter @mindenit/cist-crawler build",
-		"kit:playground": "pnpm --filter @mindenit/cist-crawler playground",
+		"lib:build": "pnpm --filter @mindenit/cist-crawler build",
+		"lib:playground": "pnpm --filter @mindenit/cist-crawler playground",
 		"prepare": "husky"
 	},
 	"devDependencies": {
