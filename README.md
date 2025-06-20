@@ -1,5 +1,9 @@
 # CIST Crawler
 
+[![npm version](https://badge.fury.io/js/%40mindenit%2Fcist-crawler.svg)](https://www.npmjs.com/package/@mindenit/cist-crawler)
+[![npm downloads](https://img.shields.io/npm/dw/%40mindenit%2Fcist-crawler)](https://www.npmjs.com/package/@mindenit/cist-crawler)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 A TypeScript library for crawling schedule data from NURE (National University of Radio Electronics) CIST system.
 
 ## Features
