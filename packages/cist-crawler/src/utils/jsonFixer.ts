@@ -2,6 +2,7 @@ export class UniversalJSONFixer {
 	private static readonly FIXES = [
 		{ name: 'BOM and invisible characters', fn: this.removeBOM },
 		{ name: 'Extra spaces', fn: this.cleanWhitespace },
+		{ name: 'CIST faculty separator', fn: this.fixCistFacultySeparator },
 		{ name: 'Extra closing braces', fn: this.fixExtraClosingBraces },
 		{ name: 'Multiple braces', fn: this.fixMultipleBraces },
 		{ name: 'Incorrect sequences', fn: this.fixBraceSequences },
@@ -23,6 +24,18 @@ export class UniversalJSONFixer {
 
 	private static cleanWhitespace(str: string): string {
 		return str.replace(/[\t\r]/g, ' ').replace(/\n+/g, '\n')
+	}
+
+	/**
+	 * Fixes CIST-specific malformed JSON where faculties are separated by
+	 * ` , ` (space-comma-space) instead of `,` between objects.
+	 * Pattern: `"teachers":[...]} , {"id":..., "short_name":..., "departments":[`
+	 */
+	private static fixCistFacultySeparator(str: string): string {
+		return str.replace(
+			/(teachers":\[[^\]]*\]\})\s,\s(\{\s*"id":\d+,"short_name":"[^"]*?","full_name":"[^"]*?","departments":\[)/g,
+			'$1,$2',
+		)
 	}
 
 	private static fixExtraClosingBraces(str: string): string {

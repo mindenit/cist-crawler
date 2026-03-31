@@ -1,14 +1,17 @@
 import type { IBaseModule, Response, ScheduleOptions } from '@/types.js'
 import { Fetcher } from '@/utils/fetcher.js'
 import { JSONParser } from '@/utils/parser.js'
+import { fixEventTimestamps } from '@/utils/timestampFixer.js'
 
 export class ScheduleModule implements IBaseModule {
 	private fetcher: Fetcher
 	private parser: JSONParser
+	private clientId: string
 
-	constructor(servers?: string[], timeout?: number) {
+	constructor(servers?: string[], timeout?: number, clientId?: string) {
 		this.fetcher = new Fetcher(servers, timeout)
 		this.parser = new JSONParser()
+		this.clientId = clientId ?? 'KEY_NOT_PROVIDED'
 	}
 
 	/**
@@ -43,13 +46,13 @@ export class ScheduleModule implements IBaseModule {
 		const time_from = Math.floor(defaultTimeFrom.getTime() / 1000)
 		const time_to = Math.floor(defaultTimeTo.getTime() / 1000)
 
-		const endpoint = `/ias/app/tt/P_API_EVEN_JSON?type_id=${type}&timetable_id=${id}&time_from=${time_from}&time_to=${time_to}&idClient=KNURESked`
+		const endpoint = `/ias/app/tt/P_API_EVEN_JSON?type_id=${type}&timetable_id=${id}&time_from=${time_from}&time_to=${time_to}&idClient=${this.clientId}`
 		const rawJson = await this.fetcher.fetchAndDecode(endpoint)
 		const result = this.parser.parseWithFallback<Response>(
 			rawJson,
 			`schedule_${type}_${id}`,
 		)
 
-		return result || []
+		return fixEventTimestamps(result ?? [])
 	}
 }
