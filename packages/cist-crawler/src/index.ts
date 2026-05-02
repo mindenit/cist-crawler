@@ -24,7 +24,11 @@ export class CistCrawler {
 		this.groups = new GroupsModule(mutableServers, timeout)
 		this.teachers = new TeachersModule(mutableServers, timeout)
 		this.auditories = new AuditoriesModule(mutableServers, timeout)
-		this.schedule = new ScheduleModule(mutableServers, timeout)
+		this.schedule = new ScheduleModule(
+			mutableServers,
+			timeout,
+			config?.clientId,
+		)
 	}
 
 	async getGroups() {

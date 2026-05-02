@@ -53,9 +53,9 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"tsdown": "^0.12.8",
-		"tsx": "^4.20.3",
-		"typescript": "^5.8.3"
+		"tsdown": "^0.12.9",
+		"tsx": "^4.21.0",
+		"typescript": "^5.9.3"
 	},
 	"private": false
 }

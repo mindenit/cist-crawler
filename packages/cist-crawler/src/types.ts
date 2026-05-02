@@ -1,6 +1,7 @@
 export interface CistCrawlerConfig {
 	servers?: string[]
 	timeout?: number
+	clientId?: string
 }
 
 export interface Response {

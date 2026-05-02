@@ -13,7 +13,7 @@ A TypeScript library for crawling schedule data from NURE (National University o
 - 🛠️ Robust JSON parsing with automatic error correction
 - 📝 Full TypeScript support with comprehensive type definitions
 - ⚡ Modern ES modules with tree-shaking support
-- 🔧 Configurable timeout and server settings
+- 🔧 Configurable timeout, server settings, and client ID
 
 ## Installation
 
@@ -33,7 +33,7 @@ pnpm add @mindenit/cist-crawler
 ```typescript
 import { CistCrawler } from '@mindenit/cist-crawler'
 
-const crawler = new CistCrawler()
+const crawler = new CistCrawler({ clientId: 'your_client_id' })
 
 // Get all groups
 const groups = await crawler.getGroups()
@@ -54,7 +54,7 @@ console.log(groupSchedule)
 
 ## Configuration
 
-You can configure the crawler with custom servers and timeout settings:
+You can configure the crawler with custom servers, timeout, and client ID settings:
 
 ```typescript
 import { CistCrawler } from '@mindenit/cist-crawler'
@@ -62,8 +62,11 @@ import { CistCrawler } from '@mindenit/cist-crawler'
 const crawler = new CistCrawler({
 	servers: ['cist.nure.ua', 'cist2.nure.ua'], // Custom server list
 	timeout: 10000, // 10 second timeout
+	clientId: 'your_client_id', // CIST API client identifier
 })
 ```
+
+> **Note:** The `clientId` is required to access the schedule endpoint. If not provided, it defaults to `'KEY_NOT_PROVIDED'` and schedule requests will fail with an authorization error.
 
 ## API Reference
 
@@ -75,10 +78,11 @@ new CistCrawler(config?: CistCrawlerConfig)
 
 #### CistCrawlerConfig
 
-| Property  | Type       | Default                             | Description                     |
-| --------- | ---------- | ----------------------------------- | ------------------------------- |
-| `servers` | `string[]` | `['cist.nure.ua', 'cist2.nure.ua']` | List of CIST servers to use     |
-| `timeout` | `number`   | `5000`                              | Request timeout in milliseconds |
+| Property   | Type       | Default                             | Description                                                 |
+| ---------- | ---------- | ----------------------------------- | ----------------------------------------------------------- |
+| `servers`  | `string[]` | `['cist.nure.ua', 'cist2.nure.ua']` | List of CIST servers to use                                 |
+| `timeout`  | `number`   | `5000`                              | Request timeout in milliseconds                             |
+| `clientId` | `string`   | `'KEY_NOT_PROVIDED'`                | CIST API client identifier (required for schedule requests) |
 
 ### Methods
 
@@ -191,7 +195,7 @@ The library includes custom error handling with the `CistCrawlerError` class:
 import { CistCrawler, CistCrawlerError } from '@mindenit/cist-crawler'
 
 try {
-	const crawler = new CistCrawler()
+	const crawler = new CistCrawler({ clientId: 'your_client_id' })
 	const groups = await crawler.getGroups()
 } catch (error) {
 	if (error instanceof CistCrawlerError) {
@@ -217,7 +221,7 @@ The library includes robust JSON parsing that can handle malformed JSON response
 ```typescript
 import { CistCrawler } from '@mindenit/cist-crawler'
 
-const crawler = new CistCrawler()
+const crawler = new CistCrawler({ clientId: 'your_client_id' })
 
 async function getCurrentSemesterSchedule(groupId: number) {
 	const now = new Date()
