@@ -2,7 +2,7 @@ import { defineConfig } from 'tsdown'
 
 export default defineConfig({
 	entry: ['src/index.ts'],
-	format: ['esm'],
+	format: ['esm', 'cjs'],
 	clean: true,
 	dts: true,
 	bundle: true,
@@ -11,4 +11,5 @@ export default defineConfig({
 	target: 'es2020',
 	outDir: 'dist',
 	treeshake: true,
+	hash: false,
 })
