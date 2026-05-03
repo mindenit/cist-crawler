@@ -1,4 +1,4 @@
-import { CistCrawler } from './src/index.js'
+import { CistCrawler } from './dist'
 
 const crawler = new CistCrawler({ clientId: 'KEY_HERE' })
 
