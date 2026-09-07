@@ -18,6 +18,8 @@ const BREAKER_COOLDOWN_MS = 30_000
 export class Fetcher {
 	private servers: string[]
 	private timeout: number
+	private requestDelayMs: number
+	private lastRequestAt = 0
 	private cachedServer?: { server: string; resolvedAt: number }
 	private serverState = new Map<
 		string,
@@ -27,9 +29,28 @@ export class Fetcher {
 	constructor(
 		servers: string[] = [...DEFAULT_CONFIG.servers],
 		timeout: number = DEFAULT_CONFIG.timeout,
+		// opt-in only: unset means no pacing, library imposes no rate limit by
+		// default. Set it if your upstream usage needs to stay under a rate.
+		requestDelayMs = 0,
 	) {
 		this.servers = servers
 		this.timeout = timeout
+		this.requestDelayMs = requestDelayMs
+	}
+
+	private async waitForSlot(): Promise<void> {
+		if (this.requestDelayMs <= 0) {
+			return
+		}
+
+		const elapsed = Date.now() - this.lastRequestAt
+		const remaining = this.requestDelayMs - elapsed
+
+		if (remaining > 0) {
+			await this.sleep(remaining)
+		}
+
+		this.lastRequestAt = Date.now()
 	}
 
 	private isServerOpen(server: string): boolean {
@@ -75,6 +96,8 @@ export class Fetcher {
 			}
 
 			try {
+				await this.waitForSlot()
+
 				const healthCheckUrl = `https://${server}/ias/app/tt/P_API_AUDITORIES_JSON`
 				const controller = new AbortController()
 				const timeoutId = setTimeout(() => controller.abort(), this.timeout)
@@ -146,6 +169,8 @@ export class Fetcher {
 
 	private async fetchOnce(url: string): Promise<string> {
 		try {
+			await this.waitForSlot()
+
 			const controller = new AbortController()
 			const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 

@@ -2,6 +2,11 @@ export interface CistCrawlerConfig {
 	servers?: string[]
 	timeout?: number
 	clientId?: string
+	/**
+	 * Minimum delay (ms) enforced between requests this crawler makes.
+	 * Opt-in only — unset means no pacing is applied.
+	 */
+	requestDelayMs?: number
 }
 
 export interface Response {

@@ -18,16 +18,22 @@ export class CistCrawler {
 	constructor(config?: CistCrawlerConfig) {
 		const servers = config?.servers ?? DEFAULT_CONFIG.servers
 		const timeout = config?.timeout ?? DEFAULT_CONFIG.timeout
+		const requestDelayMs = config?.requestDelayMs ?? 0
 
 		const mutableServers = [...servers]
 
-		this.groups = new GroupsModule(mutableServers, timeout)
-		this.teachers = new TeachersModule(mutableServers, timeout)
-		this.auditories = new AuditoriesModule(mutableServers, timeout)
+		this.groups = new GroupsModule(mutableServers, timeout, requestDelayMs)
+		this.teachers = new TeachersModule(mutableServers, timeout, requestDelayMs)
+		this.auditories = new AuditoriesModule(
+			mutableServers,
+			timeout,
+			requestDelayMs,
+		)
 		this.schedule = new ScheduleModule(
 			mutableServers,
 			timeout,
 			config?.clientId,
+			requestDelayMs,
 		)
 	}
 
