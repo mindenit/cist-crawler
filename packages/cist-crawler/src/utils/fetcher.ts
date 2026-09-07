@@ -1,9 +1,14 @@
 import { DEFAULT_CONFIG } from '@/index.js'
 import { CistCrawlerError } from '@/error.js'
 
+// ponytail: fixed TTL, not exposed as config; raise if health-checks still
+// dominate request volume in practice
+const SERVER_CACHE_TTL_MS = 60_000
+
 export class Fetcher {
 	private servers: string[]
 	private timeout: number
+	private cachedServer?: { server: string; resolvedAt: number }
 
 	constructor(
 		servers: string[] = [...DEFAULT_CONFIG.servers],
@@ -11,6 +16,19 @@ export class Fetcher {
 	) {
 		this.servers = servers
 		this.timeout = timeout
+	}
+
+	private async resolveServer(): Promise<string> {
+		if (
+			this.cachedServer &&
+			Date.now() - this.cachedServer.resolvedAt < SERVER_CACHE_TTL_MS
+		) {
+			return this.cachedServer.server
+		}
+
+		const server = await this.getAvailableServer()
+		this.cachedServer = { server, resolvedAt: Date.now() }
+		return server
 	}
 
 	async getAvailableServer(): Promise<string> {
@@ -41,7 +59,7 @@ export class Fetcher {
 	}
 
 	async fetchAndDecode(endpoint: string): Promise<string> {
-		const server = await this.getAvailableServer()
+		const server = await this.resolveServer()
 		const url = `https://${server}${endpoint}`
 
 		try {
