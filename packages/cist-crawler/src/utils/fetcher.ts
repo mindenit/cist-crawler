@@ -10,10 +10,19 @@ const SERVER_CACHE_TTL_MS = 60_000
 const RETRY_ATTEMPTS = 3
 const RETRY_BACKOFF_MS = 300
 
+// ponytail: fixed circuit-breaker thresholds, not exposed as config; revisit
+// if a real outage needs a longer/shorter cooldown
+const BREAKER_FAILURE_THRESHOLD = 3
+const BREAKER_COOLDOWN_MS = 30_000
+
 export class Fetcher {
 	private servers: string[]
 	private timeout: number
 	private cachedServer?: { server: string; resolvedAt: number }
+	private serverState = new Map<
+		string,
+		{ failures: number; openUntil: number }
+	>()
 
 	constructor(
 		servers: string[] = [...DEFAULT_CONFIG.servers],
@@ -21,6 +30,29 @@ export class Fetcher {
 	) {
 		this.servers = servers
 		this.timeout = timeout
+	}
+
+	private isServerOpen(server: string): boolean {
+		const state = this.serverState.get(server)
+		return state !== undefined && state.openUntil > Date.now()
+	}
+
+	private recordServerSuccess(server: string): void {
+		this.serverState.delete(server)
+	}
+
+	private recordServerFailure(server: string): void {
+		const state = this.serverState.get(server) ?? {
+			failures: 0,
+			openUntil: 0,
+		}
+		state.failures += 1
+
+		if (state.failures >= BREAKER_FAILURE_THRESHOLD) {
+			state.openUntil = Date.now() + BREAKER_COOLDOWN_MS
+		}
+
+		this.serverState.set(server, state)
 	}
 
 	private async resolveServer(): Promise<string> {
@@ -38,6 +70,10 @@ export class Fetcher {
 
 	async getAvailableServer(): Promise<string> {
 		for (const server of this.servers) {
+			if (this.isServerOpen(server)) {
+				continue
+			}
+
 			try {
 				const healthCheckUrl = `https://${server}/ias/app/tt/P_API_AUDITORIES_JSON`
 				const controller = new AbortController()
@@ -51,9 +87,13 @@ export class Fetcher {
 				clearTimeout(timeoutId)
 
 				if (response.ok) {
+					this.recordServerSuccess(server)
 					return server
 				}
+
+				this.recordServerFailure(server)
 			} catch (error) {
+				this.recordServerFailure(server)
 				console.warn(
 					`Server ${server} is unavailable. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				)
@@ -68,9 +108,13 @@ export class Fetcher {
 		const url = `https://${server}${endpoint}`
 
 		let lastError: unknown
+		let serverFaulted = false
+
 		for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
 			try {
-				return await this.fetchOnce(url)
+				const result = await this.fetchOnce(url)
+				this.recordServerSuccess(server)
+				return result
 			} catch (error) {
 				lastError = error
 
@@ -79,12 +123,22 @@ export class Fetcher {
 					error.status >= 400 &&
 					error.status < 500
 
-				if (isClientError || attempt === RETRY_ATTEMPTS) {
+				if (isClientError) {
+					break
+				}
+
+				if (attempt === RETRY_ATTEMPTS) {
+					serverFaulted = true
 					break
 				}
 
 				await this.sleep(RETRY_BACKOFF_MS * attempt)
 			}
+		}
+
+		if (serverFaulted) {
+			this.recordServerFailure(server)
+			this.cachedServer = undefined
 		}
 
 		throw lastError
