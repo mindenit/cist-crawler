@@ -5,6 +5,11 @@ import { CistCrawlerError } from '@/error.js'
 // dominate request volume in practice
 const SERVER_CACHE_TTL_MS = 60_000
 
+// ponytail: fixed retry/backoff, not exposed as config; revisit if transient
+// failures still slip through in practice
+const RETRY_ATTEMPTS = 3
+const RETRY_BACKOFF_MS = 300
+
 export class Fetcher {
 	private servers: string[]
 	private timeout: number
@@ -62,6 +67,30 @@ export class Fetcher {
 		const server = await this.resolveServer()
 		const url = `https://${server}${endpoint}`
 
+		let lastError: unknown
+		for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+			try {
+				return await this.fetchOnce(url)
+			} catch (error) {
+				lastError = error
+
+				const isClientError =
+					error instanceof CistCrawlerError &&
+					error.status >= 400 &&
+					error.status < 500
+
+				if (isClientError || attempt === RETRY_ATTEMPTS) {
+					break
+				}
+
+				await this.sleep(RETRY_BACKOFF_MS * attempt)
+			}
+		}
+
+		throw lastError
+	}
+
+	private async fetchOnce(url: string): Promise<string> {
 		try {
 			const controller = new AbortController()
 			const timeoutId = setTimeout(() => controller.abort(), this.timeout)
@@ -95,5 +124,9 @@ export class Fetcher {
 				500,
 			)
 		}
+	}
+
+	private sleep(ms: number): Promise<void> {
+		return new Promise((resolve) => setTimeout(resolve, ms))
 	}
 }
