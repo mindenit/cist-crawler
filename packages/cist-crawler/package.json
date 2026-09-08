@@ -1,6 +1,6 @@
 {
 	"name": "@mindenit/cist-crawler",
-	"version": "0.1.4",
+	"version": "1.0.0",
 	"description": "CIST crawler for Mindenit Schedule",
 	"type": "module",
 	"keywords": [

@@ -3,9 +3,10 @@
 All notable changes to this package are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [1.0.0] - 2026-09-08
 
-Pending in local branches, not yet merged to `main` or published.
+First stable release. Focused on making the crawler resilient to CIST's
+frequent upstream flakiness.
 
 - Server-resolution caching (60s TTL) to avoid re-probing before every fetch
 - Retry with backoff on transient fetch failures, skipping deterministic 4xx errors
