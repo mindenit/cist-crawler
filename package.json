@@ -9,8 +9,10 @@
 	},
 	"scripts": {
 		"format": "prettier --write .",
+		"format:check": "prettier --check .",
 		"lib:build": "pnpm --filter @mindenit/cist-crawler build",
 		"lib:playground": "pnpm --filter @mindenit/cist-crawler playground",
+		"lib:typecheck": "pnpm --filter @mindenit/cist-crawler typecheck",
 		"prepare": "husky"
 	},
 	"devDependencies": {
