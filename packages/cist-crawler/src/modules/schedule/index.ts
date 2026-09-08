@@ -8,8 +8,13 @@ export class ScheduleModule implements IBaseModule {
 	private parser: JSONParser
 	private clientId: string
 
-	constructor(servers?: string[], timeout?: number, clientId?: string) {
-		this.fetcher = new Fetcher(servers, timeout)
+	constructor(
+		servers?: string[],
+		timeout?: number,
+		clientId?: string,
+		requestDelayMs?: number,
+	) {
+		this.fetcher = new Fetcher(servers, timeout, requestDelayMs)
 		this.parser = new JSONParser()
 		this.clientId = clientId ?? 'KEY_NOT_PROVIDED'
 	}

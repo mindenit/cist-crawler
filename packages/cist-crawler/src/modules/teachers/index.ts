@@ -6,8 +6,8 @@ export class TeachersModule implements IBaseModule {
 	private fetcher: Fetcher
 	private parser: JSONParser
 
-	constructor(servers?: string[], timeout?: number) {
-		this.fetcher = new Fetcher(servers, timeout)
+	constructor(servers?: string[], timeout?: number, requestDelayMs?: number) {
+		this.fetcher = new Fetcher(servers, timeout, requestDelayMs)
 		this.parser = new JSONParser()
 	}
 

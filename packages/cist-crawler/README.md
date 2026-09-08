@@ -5,11 +5,12 @@ A TypeScript library for crawling schedule data from NURE (National University o
 ## Features
 
 - 🏫 Fetch groups, teachers, auditories, and schedules
-- 🔄 Automatic server failover for high availability
-- 🛠️ Robust JSON parsing with automatic error correction
+- 🔄 Automatic server failover with a per-server circuit breaker
+- ♻️ Automatic retry with backoff on transient failures
+- 🛠️ Robust JSON parsing with automatic error correction, including Oracle backend error classification
 - 📝 Full TypeScript support with comprehensive type definitions
 - ⚡ Modern ES modules with tree-shaking support
-- 🔧 Configurable timeout and server settings
+- 🔧 Configurable timeout, server settings, and opt-in request pacing
 
 ## Installation
 
@@ -59,6 +60,7 @@ const crawler = new CistCrawler({
 	servers: ['cist.nure.ua', 'cist2.nure.ua'], // Custom server list
 	timeout: 10000, // 10 second timeout
 	clientId: 'your_client_id', // CIST API client identifier
+	requestDelayMs: 8000, // Optional: minimum delay between requests
 })
 ```
 
@@ -74,11 +76,12 @@ new CistCrawler(config?: CistCrawlerConfig)
 
 #### CistCrawlerConfig
 
-| Property   | Type       | Default                             | Description                                                 |
-| ---------- | ---------- | ----------------------------------- | ----------------------------------------------------------- |
-| `servers`  | `string[]` | `['cist.nure.ua', 'cist2.nure.ua']` | List of CIST servers to use                                 |
-| `timeout`  | `number`   | `5000`                              | Request timeout in milliseconds                             |
-| `clientId` | `string`   | `'KEY_NOT_PROVIDED'`                | CIST API client identifier (required for schedule requests) |
+| Property         | Type       | Default                             | Description                                                                 |
+| ---------------- | ---------- | ----------------------------------- | --------------------------------------------------------------------------- |
+| `servers`        | `string[]` | `['cist.nure.ua', 'cist2.nure.ua']` | List of CIST servers to use                                                 |
+| `timeout`        | `number`   | `5000`                              | Request timeout in milliseconds                                             |
+| `clientId`       | `string`   | `'KEY_NOT_PROVIDED'`                | CIST API client identifier (required for schedule requests)                 |
+| `requestDelayMs` | `number`   | `undefined` (no pacing)             | Opt-in minimum delay between outbound requests, useful to avoid rate limits |
 
 ### Methods
 
@@ -202,13 +205,22 @@ try {
 }
 ```
 
-## Server Failover
+## Server Failover & Resilience
 
 The library automatically handles server failover. If the primary server is unavailable, it will try the next server in the list. This ensures high availability even when some CIST servers are down.
+
+On top of failover:
+
+- **Retry with backoff** — transient fetch failures (timeouts, network errors) are retried up to 3 times with linear backoff. Deterministic client errors (4xx) are not retried.
+- **Per-server circuit breaker** — after 3 consecutive failures, a server is skipped for 30 seconds instead of being re-probed on every request.
+- **Server health caching** — a resolved healthy server is cached for 60 seconds so repeated requests (e.g. crawling many groups in a loop) don't re-run a health check every time.
+- **Opt-in request pacing** — set `requestDelayMs` if you need to stay under a minimum interval between requests to avoid rate limiting; unset by default, no pacing is imposed.
 
 ## JSON Parsing
 
 The library includes robust JSON parsing that can handle malformed JSON responses from the CIST API. It automatically applies various fixes to ensure reliable data parsing.
+
+The CIST backend is Oracle-based and occasionally returns an internal `ORA-XXXXX` error as plain text with an HTTP 200 status instead of real JSON. The parser detects this and throws a `CistCrawlerError` (status `502`) with the Oracle error code attached via `error.code`, instead of a generic parse-failure error.
 
 ## Examples
 

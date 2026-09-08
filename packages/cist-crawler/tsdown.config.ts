@@ -5,7 +5,7 @@ export default defineConfig({
 	format: ['esm', 'cjs'],
 	clean: true,
 	dts: true,
-	bundle: true,
+	unbundle: false,
 	minify: true,
 	skipNodeModulesBundle: false,
 	target: 'es2020',

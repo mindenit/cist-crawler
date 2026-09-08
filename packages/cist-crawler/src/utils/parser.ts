@@ -1,6 +1,15 @@
 import { UniversalJSONFixer } from '@/utils/jsonFixer.js'
 import { CistCrawlerError } from '@/error.js'
 
+// Cist backend is Oracle-backed; on internal failure it returns an
+// "ORA-XXXXX: ..." plain-text body with HTTP 200 instead of real JSON.
+const KNOWN_ORA_MESSAGES: Record<string, string> = {
+	'ORA-04030': 'Out of process memory',
+	'ORA-01089': 'Immediate shutdown in progress, no operations permitted',
+	'ORA-01652': 'Unable to extend temp segment',
+	'ORA-08103': 'Object no longer exists',
+}
+
 export class JSONParser {
 	private tryFixComplex(invalidJson: string): string {
 		if (!invalidJson) return '{}'
@@ -102,6 +111,18 @@ export class JSONParser {
 				const fixedJsonBackup = this.tryFixSimple(rawJson)
 				return JSON.parse(fixedJsonBackup)
 			} catch (backupError) {
+				const oraMatch = rawJson.match(/ORA-\d+/)
+				if (oraMatch) {
+					const code = oraMatch[0]
+					const description =
+						KNOWN_ORA_MESSAGES[code] ?? 'Unknown Oracle exception'
+					throw new CistCrawlerError(
+						`Cist returned an Oracle exception for '${requestType}': ${description} (${code})`,
+						502,
+						code,
+					)
+				}
+
 				throw new CistCrawlerError(
 					`Failed to parse JSON for '${requestType}': ${primaryError instanceof Error ? primaryError.message : 'Unknown error'}`,
 					400,
