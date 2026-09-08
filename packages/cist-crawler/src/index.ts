@@ -2,6 +2,7 @@ import { GroupsModule } from '@/modules/groups/index.js'
 import { TeachersModule } from '@/modules/teachers/index.js'
 import { AuditoriesModule } from '@/modules/auditories/index.js'
 import { ScheduleModule } from '@/modules/schedule/index.js'
+import { CistCrawlerError } from '@/error.js'
 import type { CistCrawlerConfig, IBaseModule } from '@/types.js'
 
 export const DEFAULT_CONFIG = {
@@ -19,6 +20,20 @@ export class CistCrawler {
 		const servers = config?.servers ?? DEFAULT_CONFIG.servers
 		const timeout = config?.timeout ?? DEFAULT_CONFIG.timeout
 		const requestDelayMs = config?.requestDelayMs ?? 0
+
+		if (servers.length === 0) {
+			throw new CistCrawlerError(
+				'CistCrawlerConfig.servers must not be empty',
+				400,
+			)
+		}
+
+		if (timeout <= 0) {
+			throw new CistCrawlerError(
+				'CistCrawlerConfig.timeout must be positive',
+				400,
+			)
+		}
 
 		const mutableServers = [...servers]
 
